@@ -4,7 +4,7 @@ import { client, wallets } from "../library.js"
 const contractAddr = "terra1lyla4th5dtx85chq5qqht77kfwywgn42jgvjgs"
 const walletAddr = wallets.bombay.key.accAddress
 
-const UPDATE_PRICE_MSG = { update_price: { price: 1234 } }
+const UPDATE_PRICE_MSG = { update_price: { price: 1 } }
 
 const tx = await wallets.bombay.createAndSignTx({
   msgs: [

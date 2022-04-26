@@ -18,5 +18,21 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // TODO
+    /// Returns Token Address
+    GetTokenAddr,
+
+    /// Returns balance of native token
+    GetBalance,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct TokenAddrResponse {
+    pub token_address: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct BalanceResponse {
+    pub balance: u64,
 }

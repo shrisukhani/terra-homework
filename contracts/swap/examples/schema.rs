@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use swap::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use swap::msg::{BalanceResponse, ExecuteMsg, InstantiateMsg, QueryMsg, TokenAddrResponse};
 fn main() {
     let mut out_dir = current_dir().unwrap();
     out_dir.push("schema");
@@ -13,4 +13,6 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
+    export_schema(&schema_for!(BalanceResponse), &out_dir);
+    export_schema(&schema_for!(TokenAddrResponse), &out_dir);
 }

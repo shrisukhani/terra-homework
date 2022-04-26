@@ -7,9 +7,9 @@
       }
     },
     "oracle": {
-      "codeId": "66273",
+      "codeId": "67503",
       "contractAddresses": {
-        "default": "terra1yhlp5zxct4cm0raud2hl72sa6qqejejmehua2q"
+        "default": "terra1lyla4th5dtx85chq5qqht77kfwywgn42jgvjgs"
       }
     },
     "cw20_token": {

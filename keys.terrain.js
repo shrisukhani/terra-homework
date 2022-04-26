@@ -8,9 +8,12 @@ module.exports = {
       "confirm electric wink vocal nut flat globe machine gown million develop quiz dune bar coil favorite need skin iron husband mutual shoulder depth today",
   },
   // terra1c05zxkr8ee40tf2har8yksgk7gdjjmleudeqhq
-  sampleKey2:{
+  sampleKey2: {
     mnemonic:
       "warm lucky circle bicycle quote lemon omit one robot include fruit fix coach parrot identify glance foil random fox tornado diagram twist flat picnic",
-  }
-};
-
+  },
+  bombay: {
+    mnemonic:
+      "expand heavy laptop quick myself cloud junior struggle board vote leisure produce because term actor solve dignity better wide marine toilet limb tribe cricket",
+  },
+}

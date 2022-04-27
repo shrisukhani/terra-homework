@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, QueryRequest,
-    Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
+    coin, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 
 use cw2::set_contract_version;
@@ -140,7 +140,7 @@ pub fn try_withdraw(
 
     let msg = BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![self_balance.clone()],
+        amount: vec![coin(amount as u128, String::from("uluna"))],
     };
 
     Ok(Response::new()

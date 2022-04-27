@@ -7,6 +7,7 @@ use cw_storage_plus::Item;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     pub owner: Addr,
+    pub oracle_address: Addr,
     pub token_address: Addr,
 }
 

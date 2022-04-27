@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {
+    pub oracle_address: Addr,
     pub token_address: Addr,
 }
 
@@ -34,5 +35,5 @@ pub struct TokenAddrResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct BalanceResponse {
-    pub balance: u64,
+    pub balance: i32,
 }

@@ -674,6 +674,8 @@ dependencies = [
  "cw0 0.8.1",
  "cw2",
  "cw20 0.8.1",
+ "cw20_token",
+ "oracle",
  "schemars",
  "serde",
  "shared",

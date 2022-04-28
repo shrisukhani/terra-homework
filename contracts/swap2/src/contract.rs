@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, wasm_execute, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StakingMsg, StdError, StdResult, SubMsg, Uint128,
+    coin, to_binary, wasm_execute, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Empty,
+    Env, MessageInfo, Response, StakingMsg, StakingQuery, StdError, StdResult, SubMsg, Uint128,
+    WasmMsg,
 };
 use cw0::must_pay;
 use cw2::set_contract_version;
@@ -119,7 +120,7 @@ pub fn try_buy(
     let msgs = vec![
         // Delegate new luna generated to a validator immediately
         CosmosMsg::Staking(StakingMsg::Delegate {
-            validator: "validator_friend".to_string(),
+            validator: _VALIDATOR.to_string(),
             amount: coin(payment_amt.u128(), String::from("uluna")),
         }),
         transfer_aurm_to_user_msg.into(),
@@ -132,22 +133,47 @@ pub fn try_withdraw_step1_collect_rewards(
     deps: DepsMut,
     env: Env,
     _info: MessageInfo,
-    _amount: u64,
+    amount: u64,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     // Step 1: Collect all rewards we have accrued.
 
-    let _reward_submessages = collect_all_rewards(deps, &env)?;
+    let mut submessages: Vec<SubMsg<TerraMsgWrapper>> = Vec::new();
+
+    // Add collection msg(s) to submessages
+    let reward_submessages = collect_all_rewards(deps, &env)?;
+    submessages.extend(reward_submessages);
+
+    // Add Conversion msg to submessages
+    submessages.push(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(&ExecuteMsg::WithdrawStep2ConvertRewardsToLuna { amount })?,
+        funds: vec![],
+    })));
+
+    // Add withdraw msg to submessages
+    submessages.push(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(&ExecuteMsg::WithdrawStep3SendLuna { amount })?,
+        funds: vec![],
+    })));
 
     // TODO
-    Ok(Response::<TerraMsgWrapper>::new())
+    Ok(Response::<TerraMsgWrapper>::new()
+        .add_attribute("method", "try_withdraw_step1_collect_rewards")
+        .add_submessages(submessages))
 }
 
 pub fn collect_all_rewards(
     _deps: DepsMut,
     _env: &Env,
 ) -> Result<Vec<SubMsg<TerraMsgWrapper>>, ContractError> {
-    // TODO
-    Err(ContractError::NotImplemented {})
+    let withdraw_rewards_msg: SubMsg<TerraMsgWrapper> = SubMsg::new(CosmosMsg::Distribution(
+        DistributionMsg::WithdrawDelegatorReward {
+            validator: _VALIDATOR.to_string(),
+        },
+    ));
+
+    Ok(vec![withdraw_rewards_msg])
 }
 
 pub fn try_withdraw_step2_convert_all_native_coins_to_luna(

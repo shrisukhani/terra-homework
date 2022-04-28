@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, wasm_execute, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Empty,
-    Env, MessageInfo, Response, StakingMsg, StakingQuery, StdError, StdResult, SubMsg, Uint128,
-    WasmMsg,
+    coin, to_binary, wasm_execute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
+    DistributionMsg, Empty, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdError,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw0::must_pay;
 use cw2::set_contract_version;
 //use cw20::Cw20ExecuteMsg;
 
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg};
-use terra_cosmwasm::{ExchangeRatesResponse, TerraMsgWrapper, TerraQuerier};
+use terra_cosmwasm::{create_swap_msg, ExchangeRatesResponse, TerraMsgWrapper, TerraQuerier};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -150,13 +150,6 @@ pub fn try_withdraw_step1_collect_rewards(
         funds: vec![],
     })));
 
-    // Add withdraw msg to submessages
-    submessages.push(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: env.contract.address.to_string(),
-        msg: to_binary(&ExecuteMsg::WithdrawStep3SendLuna { amount })?,
-        funds: vec![],
-    })));
-
     // TODO
     Ok(Response::<TerraMsgWrapper>::new()
         .add_attribute("method", "try_withdraw_step1_collect_rewards")
@@ -177,23 +170,64 @@ pub fn collect_all_rewards(
 }
 
 pub fn try_withdraw_step2_convert_all_native_coins_to_luna(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     _info: MessageInfo,
-    _amount: u64,
+    amount: u64,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
-    // TODO
-    Err(ContractError::NotImplemented {})
+    let mut msgs: Vec<SubMsg<TerraMsgWrapper>> = Vec::new();
+
+    let all_bals = deps
+        .querier
+        .query_all_balances(env.contract.address.to_string())?;
+
+    for bal in all_bals {
+        msgs.push(SubMsg::new(create_swap_msg(
+            bal.clone(),
+            "uluna".to_string(),
+        )));
+    }
+
+    // Add withdraw msg to submessages
+    msgs.push(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(&ExecuteMsg::WithdrawStep3SendLuna { amount })?,
+        funds: vec![],
+    })));
+
+    Ok(Response::new()
+        .add_attribute(
+            "method",
+            "try_withdraw_step2_convert_all_native_coins_to_luna",
+        )
+        .add_submessages(msgs))
 }
 
 pub fn try_withdraw_step3_send_luna(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     _info: MessageInfo,
-    _amount: u64,
+    amount: u64,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
-    // TODO
-    Err(ContractError::NotImplemented {})
+    let bal = deps.querier.query_balance(env.contract.address, "uluna")?;
+
+    if bal.amount.u128() <= (amount as u128) {
+        return Err(ContractError::InvalidQuantity);
+    }
+
+    let state = STATE.load(deps.storage)?;
+    let mut msgs: Vec<SubMsg<TerraMsgWrapper>> = Vec::new();
+
+    msgs.push(SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: state.owner.to_string(),
+        amount: vec![coin(amount as u128, "uluna")],
+    })));
+
+    // TODO: Re-delegate the remaining ULUNA
+
+    Ok(Response::new()
+        .add_attribute("method", "try_withdraw_step3_send_luna")
+        .add_submessages(msgs))
 }
 
 pub fn try_start_undelegation(

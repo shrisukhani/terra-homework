@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, wasm_execute, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut,
-    DistributionMsg, Empty, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdError,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    coin, to_binary, wasm_execute, BankMsg, Binary, CosmosMsg, Deps, DepsMut, DistributionMsg,
+    Empty, Env, FullDelegation, MessageInfo, Response, StakingMsg, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw0::must_pay;
 use cw2::set_contract_version;
@@ -23,7 +23,7 @@ const CONTRACT_NAME: &str = "crates.io:swap2";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // BlockNgine - 0% comission on testnet
-const _VALIDATOR: &str = "terravaloper1ze5dxzs4zcm60tg48m9unp8eh7maerma38dl84";
+const VALIDATOR: &str = "terravaloper1ze5dxzs4zcm60tg48m9unp8eh7maerma38dl84";
 
 // StakeBin - 1% comission on testnet
 // https://finder.terra.money/testnet/validator/terravaloper19ne0aqltndwxl0n32zyuglp2z8mm3nu0gxpfaw
@@ -120,7 +120,7 @@ pub fn try_buy(
     let msgs = vec![
         // Delegate new luna generated to a validator immediately
         CosmosMsg::Staking(StakingMsg::Delegate {
-            validator: _VALIDATOR.to_string(),
+            validator: VALIDATOR.to_string(),
             amount: coin(payment_amt.u128(), String::from("uluna")),
         }),
         transfer_aurm_to_user_msg.into(),
@@ -150,7 +150,6 @@ pub fn try_withdraw_step1_collect_rewards(
         funds: vec![],
     })));
 
-    // TODO
     Ok(Response::<TerraMsgWrapper>::new()
         .add_attribute("method", "try_withdraw_step1_collect_rewards")
         .add_submessages(submessages))
@@ -162,7 +161,7 @@ pub fn collect_all_rewards(
 ) -> Result<Vec<SubMsg<TerraMsgWrapper>>, ContractError> {
     let withdraw_rewards_msg: SubMsg<TerraMsgWrapper> = SubMsg::new(CosmosMsg::Distribution(
         DistributionMsg::WithdrawDelegatorReward {
-            validator: _VALIDATOR.to_string(),
+            validator: VALIDATOR.to_string(),
         },
     ));
 
@@ -223,21 +222,46 @@ pub fn try_withdraw_step3_send_luna(
         amount: vec![coin(amount as u128, "uluna")],
     })));
 
-    // TODO: Re-delegate the remaining ULUNA
-
     Ok(Response::new()
         .add_attribute("method", "try_withdraw_step3_send_luna")
         .add_submessages(msgs))
 }
 
 pub fn try_start_undelegation(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _amount: Uint128,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Uint128,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
-    // TODO
-    Err(ContractError::NotImplemented {})
+    let state = STATE.load(deps.storage)?;
+    if state.owner != info.sender.to_string() {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let delegation = deps
+        .querier
+        .query_delegation(env.contract.address.clone(), VALIDATOR.to_string())?;
+    if let Some(FullDelegation {
+        amount: delegated_amount,
+        ..
+    }) = delegation
+    {
+        if delegated_amount.denom == "uluna" && delegated_amount.amount >= amount {
+            return Ok(Response::new()
+                .add_attribute("method", "try_start_undelegation")
+                .add_message(CosmosMsg::Staking(StakingMsg::Undelegate {
+                    validator: VALIDATOR.to_string(),
+                    amount: coin(amount.u128(), "uluna"),
+                })));
+        } else {
+            return Err(ContractError::InvalidQuantity);
+        }
+    }
+
+    return Err(StdError::GenericErr {
+        msg: "No delegation found".to_string(),
+    }
+    .into());
 }
 
 pub fn query_exchange_rates(
